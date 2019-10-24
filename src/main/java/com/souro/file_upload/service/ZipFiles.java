@@ -1,5 +1,7 @@
 package com.souro.file_upload.service;
 
+import org.springframework.stereotype.Service;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -8,11 +10,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-import org.springframework.stereotype.Service;
 
+/**
+ * The type Zip files.
+ */
 @Service
 public class ZipFiles {
 
+    /**
+     * The Files list in dir.
+     */
     List<String> filesListInDir = new ArrayList<String>();
 
     /**
