@@ -1,6 +1,12 @@
 package com.souro.file_upload.controller;
 
+import com.souro.file_upload.constants.Constants;
+import com.souro.file_upload.exception.LMSServiceException;
+import com.souro.file_upload.model.RestResponseEntity;
 import com.souro.file_upload.service.S3ServiceImpl;
+import java.io.File;
+import java.net.MalformedURLException;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -8,16 +14,18 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.File;
-import java.net.MalformedURLException;
-import java.util.List;
 
 /**
  * The type Upload controller.
  */
+@RequestMapping("s3")
 @RestController
 public class S3Controller {
 
@@ -28,6 +36,12 @@ public class S3Controller {
     S3ServiceImpl s3ServiceImpl;
 
     /**
+     * The Rest response entity.
+     */
+    private RestResponseEntity restResponseEntity;
+
+
+    /**
      * Upload file response entity.
      *
      * @param uploadfiles the uploadfiles
@@ -35,14 +49,22 @@ public class S3Controller {
      * @return the response entity
      */
     @PostMapping("/api/upload")
-    public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile[] uploadfiles,
-                                        @RequestParam("courseid") String courseId) {
-        if (uploadfiles.length == 0 || isEmptyAny(uploadfiles)) {
-            return new ResponseEntity<Object>("Please select a file!", HttpStatus.OK);
+    public ResponseEntity<RestResponseEntity> uploadFile(@RequestParam(value="file", required=false) MultipartFile[] uploadfiles,
+                                                         @RequestParam("courseid") String courseId) {
+        try {
+            restResponseEntity = new RestResponseEntity();
+            if (uploadfiles==null || uploadfiles.length == 0 || isEmptyAny(uploadfiles)) {
+                restResponseEntity.add("message", "\"Please select a file!\"");
+                return new ResponseEntity<RestResponseEntity>(restResponseEntity, HttpStatus.BAD_REQUEST);
+            }
+            String result = s3ServiceImpl.saveUploadedFile(uploadfiles, courseId);
+            restResponseEntity.add("message", "Successfully uploaded to- " + result);
+            return new ResponseEntity<RestResponseEntity>(restResponseEntity, HttpStatus.OK);
+        } catch (LMSServiceException e) {
+            restResponseEntity.add("message", Constants.ERROR);
+            restResponseEntity.setResult(null);
+            return new ResponseEntity<RestResponseEntity>(restResponseEntity, HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        String result = s3ServiceImpl.saveUploadedFile(uploadfiles, courseId);
-        return new ResponseEntity<Object>("Successfully uploaded to- " + result,
-                new HttpHeaders(), HttpStatus.OK);
     }
 
     /**
@@ -68,10 +90,12 @@ public class S3Controller {
      * @return the response entity
      */
     @DeleteMapping("/deleteFile")
-    public ResponseEntity<?> deleteFile(@RequestParam(name = "courseId") String courseId,
+    public ResponseEntity<RestResponseEntity> deleteFile(@RequestParam(name = "courseId") String courseId,
                                         @RequestParam(name = "fileNames") List<String> fileNames) {
+        restResponseEntity = new RestResponseEntity();
         s3ServiceImpl.deleteFiles(courseId, fileNames);
-        return new ResponseEntity<Object>("Successfully Deleted", new HttpHeaders(), HttpStatus.OK);
+        restResponseEntity.add("message","Successfully Deleted.");
+        return new ResponseEntity<RestResponseEntity>(restResponseEntity, HttpStatus.OK);
     }
 
     /**
@@ -83,7 +107,8 @@ public class S3Controller {
      */
     @GetMapping("/getSingleFile")
     public ResponseEntity<Resource> getSingleFile(@RequestParam(name = "courseId") String courseId,
-                                                  @RequestParam(name = "fileName") String fileName) {
+                                                  @RequestParam(name = "fileName") String fileName)
+        throws MalformedURLException {
         String contentType = null;
         Resource resource = null;
         File file = null;
@@ -95,16 +120,16 @@ public class S3Controller {
             long len = file.length();
             file.deleteOnExit();
             return ResponseEntity
-                    .ok()
-                    .contentType(MediaType.parseMediaType(contentType))
-                    .contentLength(len)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
-                    .body(resource);
+                .ok()
+                .contentType(MediaType.parseMediaType(contentType))
+                .contentLength(len)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
 
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-            return null;
+        } catch (LMSServiceException e) {
+            return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
         }
+
     }
 
     /**
@@ -114,7 +139,8 @@ public class S3Controller {
      * @return the all files
      */
     @GetMapping("/getAllFiles")
-    public ResponseEntity<Resource> getAllFiles(@RequestParam(name = "courseId") String courseId) {
+    public ResponseEntity<Resource> getAllFiles(@RequestParam(name = "courseId") String courseId)
+        throws MalformedURLException {
         String contentType = null;
         Resource resource = null;
         File file = null;
@@ -125,14 +151,13 @@ public class S3Controller {
             long len = file.length();
             //file.deleteOnExit();
             return ResponseEntity
-                    .ok()
-                    .contentType(MediaType.parseMediaType(contentType)).contentLength(len)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
-                    .body(resource);
+                .ok()
+                .contentType(MediaType.parseMediaType(contentType)).contentLength(len)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
+                .body(resource);
 
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-            return null;
+        } catch (LMSServiceException e) {
+            return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
         }
     }
 
