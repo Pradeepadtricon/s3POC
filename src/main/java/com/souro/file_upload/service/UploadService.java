@@ -37,7 +37,7 @@ public class UploadService {
 	 * The Zip files.
 	 */
 	@Autowired
-    ZipFiles zipFiles;
+    ZipFilesService zipFiles;
 
 	/**
 	 * Save uploaded file string.
@@ -119,7 +119,6 @@ public class UploadService {
 	 */
     private void uploadFileTos3bucket(String fileName, File file) {
         amazonClient.getS3client().putObject(new PutObjectRequest(amazonClient.getBucketName(), fileName, file));
-        //.withCannedAcl(CannedAccessControlList.PublicRead));
     }
 
 	/**

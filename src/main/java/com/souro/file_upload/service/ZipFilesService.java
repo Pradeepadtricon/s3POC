@@ -15,7 +15,7 @@ import java.util.zip.ZipOutputStream;
  * The type Zip files.
  */
 @Service
-public class ZipFiles {
+public class ZipFilesService {
 
     /**
      * The Files list in dir.
