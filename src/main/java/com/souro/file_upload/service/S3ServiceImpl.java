@@ -20,7 +20,7 @@ import java.util.List;
  * The type Upload service.
  */
 @Service("uploadService")
-public class UploadService {
+public class S3ServiceImpl {
 
 	/**
 	 * The constant SUFFIX.
@@ -37,7 +37,7 @@ public class UploadService {
 	 * The Zip files.
 	 */
 	@Autowired
-    ZipFilesService zipFiles;
+    ZipFilesServiceImpl zipFilesServiceImpl;
 
 	/**
 	 * Save uploaded file string.
@@ -53,7 +53,7 @@ public class UploadService {
             for (int i = 0; i < multipartFile.length; i++) {
                 File file = convertMultiPartToFile(multipartFile[i]);
                 String fileName = generateFileName(multipartFile[i], courseid);
-                fileUrl = amazonClient.getEndpointUrl() + "/" + amazonClient.getBucketName() + "/" + fileName;
+                fileUrl = fileUrl + amazonClient.getBucketName() + "/" + fileName+"\n- ";
                 uploadFileTos3bucket(fileName, file);
                 file.delete();
             }
@@ -62,7 +62,7 @@ public class UploadService {
             e.printStackTrace();
 
         }
-        return "success";
+        return fileUrl;
     }
 
 	/**
@@ -192,7 +192,7 @@ public class UploadService {
             String zipFileName = downloadedPath.getName().concat(".zip");
             File zippedFile = new File(zipFileName);
             zippedFile.delete();
-            zipFiles.zipDirectory(downloadedPath, zipFileName);
+            zipFilesServiceImpl.zipDirectory(downloadedPath, zipFileName);
             File zipFile = new File(zipFileName);
             return zipFile;
 

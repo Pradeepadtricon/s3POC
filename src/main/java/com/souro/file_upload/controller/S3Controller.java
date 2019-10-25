@@ -1,6 +1,6 @@
 package com.souro.file_upload.controller;
 
-import com.souro.file_upload.service.UploadService;
+import com.souro.file_upload.service.S3ServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -19,13 +19,13 @@ import java.util.List;
  * The type Upload controller.
  */
 @RestController
-public class UploadController {
+public class S3Controller {
 
     /**
      * The Upload service.
      */
     @Autowired
-    UploadService uploadService;
+    S3ServiceImpl s3ServiceImpl;
 
     /**
      * Upload file response entity.
@@ -40,8 +40,8 @@ public class UploadController {
         if (uploadfiles.length == 0 || isEmptyAny(uploadfiles)) {
             return new ResponseEntity<Object>("Please select a file!", HttpStatus.OK);
         }
-        uploadService.saveUploadedFile(uploadfiles, courseId);
-        return new ResponseEntity<Object>("Successfully uploaded - " + uploadfiles[0].getOriginalFilename(),
+        String result = s3ServiceImpl.saveUploadedFile(uploadfiles, courseId);
+        return new ResponseEntity<Object>("Successfully uploaded to- " + result,
                 new HttpHeaders(), HttpStatus.OK);
     }
 
@@ -63,14 +63,14 @@ public class UploadController {
     /**
      * Delete file response entity.
      *
-     * @param folderName the folder name
+     * @param courseId the course Id
      * @param fileNames  the file names
      * @return the response entity
      */
     @DeleteMapping("/deleteFile")
-    public ResponseEntity<?> deleteFile(@RequestParam(name = "folderName") String folderName,
+    public ResponseEntity<?> deleteFile(@RequestParam(name = "courseId") String courseId,
                                         @RequestParam(name = "fileNames") List<String> fileNames) {
-        uploadService.deleteFiles(folderName, fileNames);
+        s3ServiceImpl.deleteFiles(courseId, fileNames);
         return new ResponseEntity<Object>("Successfully Deleted", new HttpHeaders(), HttpStatus.OK);
     }
 
@@ -88,7 +88,7 @@ public class UploadController {
         Resource resource = null;
         File file = null;
         try {
-            file = uploadService.getSingleFile(courseId, fileName);
+            file = s3ServiceImpl.getSingleFile(courseId, fileName);
 
             resource = new UrlResource(file.toURI());
             contentType = "application/octet-stream";
@@ -119,7 +119,7 @@ public class UploadController {
         Resource resource = null;
         File file = null;
         try {
-            file = uploadService.getAllFiles(courseId);
+            file = s3ServiceImpl.getAllFiles(courseId);
             resource = new UrlResource(file.toURI());
             contentType = "application/octet-stream";
             long len = file.length();

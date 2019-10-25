@@ -15,7 +15,7 @@ import java.util.zip.ZipOutputStream;
  * The type Zip files.
  */
 @Service
-public class ZipFilesService {
+public class ZipFilesServiceImpl {
 
     /**
      * The Files list in dir.
@@ -68,41 +68,6 @@ public class ZipFilesService {
             if(file.isFile()) filesListInDir.add(file.getAbsolutePath());
             else populateFilesList(file);
         }
-    }
-
-    /**
-     * This method compresses the single file to zip format
-     * @param file
-     * @param zipFileName
-     */
-    private static void zipSingleFile(File file, String zipFileName) {
-        try {
-            //create ZipOutputStream to write to the zip file
-            FileOutputStream fos = new FileOutputStream(zipFileName);
-            ZipOutputStream zos = new ZipOutputStream(fos);
-            //add a new Zip Entry to the ZipOutputStream
-            ZipEntry ze = new ZipEntry(file.getName());
-            zos.putNextEntry(ze);
-            //read the file and write to ZipOutputStream
-            FileInputStream fis = new FileInputStream(file);
-            byte[] buffer = new byte[1024];
-            int len;
-            while ((len = fis.read(buffer)) > 0) {
-                zos.write(buffer, 0, len);
-            }
-
-            //Close the zip entry to write to zip file
-            zos.closeEntry();
-            //Close resources
-            zos.close();
-            fis.close();
-            fos.close();
-            System.out.println(file.getCanonicalPath()+" is zipped to "+zipFileName);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
     }
 
 }
