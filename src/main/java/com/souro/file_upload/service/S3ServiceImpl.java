@@ -8,6 +8,8 @@ import com.amazonaws.services.s3.model.S3ObjectSummary;
 import com.amazonaws.services.s3.transfer.MultipleFileDownload;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.souro.file_upload.aws.AmazonClient;
+import com.souro.file_upload.dao.S3DaoImpl;
+import com.souro.file_upload.exception.LMSDaoException;
 import com.souro.file_upload.exception.LMSServiceException;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -28,6 +30,8 @@ import org.springframework.web.multipart.MultipartFile;
 @Service("uploadService")
 public class S3ServiceImpl {
 
+    @Autowired
+    S3DaoImpl s3DaoImpl;
     /**
      * The constant SUFFIX.
      */
@@ -67,6 +71,7 @@ public class S3ServiceImpl {
                 String fileName = generateFileName(multipartFile[i], courseid);
                 fileUrl = fileUrl + amazonClient.getBucketName() + "/" + fileName+"\n- ";
                 uploadFileTos3bucket(fileName, file);
+                s3DaoImpl.saveFileNames(courseid,multipartFile[i].getOriginalFilename());
                 file.delete();
             }
 
@@ -139,25 +144,31 @@ public class S3ServiceImpl {
      * @param folderName the folder name
      * @param fileNames  the file names
      */
-    public void deleteFiles(String folderName, List<String> fileNames) {
-        String fileUrl = amazonClient.getS3client().getUrl(amazonClient.getBucketName(), COURSE+folderName).toString();
-        List<S3ObjectSummary> fileList =
-            amazonClient.getS3client().listObjects(amazonClient.getBucketName(), COURSE+folderName).getObjectSummaries();
-        for (String eachFileName : fileNames) {
-            for (S3ObjectSummary file : fileList) {
-                if (file.getKey().contains(SUFFIX)) {
-                    if (eachFileName.equals(file.getKey().substring(file.getKey().lastIndexOf(SUFFIX) + 1))) {
-                        amazonClient.getS3client().deleteObject(amazonClient.getBucketName(), file.getKey());
-                        break;
+    public void deleteFiles(String folderName, List<String> fileNames) throws LMSServiceException {
+        try {
+            String fileUrl = amazonClient.getS3client().getUrl(amazonClient.getBucketName(), COURSE + folderName).toString();
+            List<S3ObjectSummary> fileList =
+                amazonClient.getS3client().listObjects(amazonClient.getBucketName(), COURSE + folderName).getObjectSummaries();
+            for (String eachFileName : fileNames) {
+                for (S3ObjectSummary file : fileList) {
+                    if (file.getKey().contains(SUFFIX)) {
+                        if (eachFileName.equals(file.getKey().substring(file.getKey().lastIndexOf(SUFFIX) + 1))) {
+                            amazonClient.getS3client().deleteObject(amazonClient.getBucketName(), file.getKey());
+                            s3DaoImpl.deleteFileNames(folderName, eachFileName);
+                            break;
+                        }
                     }
-                }
 
+                }
             }
+            fileList = amazonClient.getS3client().listObjects(amazonClient.getBucketName(), COURSE + folderName).getObjectSummaries();
+            if (fileList.size() == 1) {
+                amazonClient.getS3client().deleteObject(amazonClient.getBucketName(), COURSE + folderName);
+            }
+        } catch (LMSDaoException e) {
+            throw new LMSServiceException(e.getMessage());
         }
-        fileList = amazonClient.getS3client().listObjects(amazonClient.getBucketName(), COURSE+folderName).getObjectSummaries();
-        if (fileList.size() == 1) {
-            amazonClient.getS3client().deleteObject(amazonClient.getBucketName(), COURSE+folderName);
-        }
+
     }
 
     /**
@@ -209,6 +220,20 @@ public class S3ServiceImpl {
             return zipFile;
 
         } catch (InterruptedException e) {
+            throw new LMSServiceException(e.getMessage());
+        }
+    }
+
+    /**
+     * Get all file names list.
+     *
+     * @param courseId the course id
+     * @return the list
+     */
+    public List<String> getAllFileNames(String courseId) throws LMSServiceException {
+        try {
+            return s3DaoImpl.getAllFileNames(courseId);
+        } catch (LMSDaoException e) {
             throw new LMSServiceException(e.getMessage());
         }
     }

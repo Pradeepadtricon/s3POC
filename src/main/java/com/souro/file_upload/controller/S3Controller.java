@@ -1,6 +1,7 @@
 package com.souro.file_upload.controller;
 
 import com.souro.file_upload.constants.Constants;
+import com.souro.file_upload.exception.LMSDaoException;
 import com.souro.file_upload.exception.LMSServiceException;
 import com.souro.file_upload.model.RestResponseEntity;
 import com.souro.file_upload.service.S3ServiceImpl;
@@ -14,6 +15,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,7 +30,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("s3")
 @RestController
 public class S3Controller {
-
     /**
      * The Upload service.
      */
@@ -92,10 +93,15 @@ public class S3Controller {
     @DeleteMapping("/deleteFile")
     public ResponseEntity<RestResponseEntity> deleteFile(@RequestParam(name = "courseId") String courseId,
                                         @RequestParam(name = "fileNames") List<String> fileNames) {
-        restResponseEntity = new RestResponseEntity();
-        s3ServiceImpl.deleteFiles(courseId, fileNames);
-        restResponseEntity.add("message","Successfully Deleted.");
-        return new ResponseEntity<RestResponseEntity>(restResponseEntity, HttpStatus.OK);
+        try {
+            restResponseEntity = new RestResponseEntity();
+            s3ServiceImpl.deleteFiles(courseId, fileNames);
+            restResponseEntity.add("message", "Successfully Deleted.");
+            return new ResponseEntity<RestResponseEntity>(restResponseEntity, HttpStatus.OK);
+        }
+        catch (LMSServiceException e) {
+            return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
+        }
     }
 
     /**
@@ -157,6 +163,26 @@ public class S3Controller {
                 .body(resource);
 
         } catch (LMSServiceException e) {
+            return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
+        }
+    }
+
+    /**
+     * Gets file names.
+     *
+     * @param courseId the course id
+     * @return the file names
+     */
+    @GetMapping("/getFileNames")
+    public ResponseEntity<RestResponseEntity> getFileNames(@RequestParam(name = "courseId") String courseId){
+        try {
+            restResponseEntity = new RestResponseEntity();
+            List<String> fileNames = s3ServiceImpl.getAllFileNames(courseId);
+            restResponseEntity.add("message", Constants.SUCCESS);
+            restResponseEntity.setResult(fileNames);
+            return new ResponseEntity<RestResponseEntity>(restResponseEntity, HttpStatus.OK);
+        }
+        catch (LMSServiceException e) {
             return new ResponseEntity<>(null, HttpStatus.NOT_ACCEPTABLE);
         }
     }
